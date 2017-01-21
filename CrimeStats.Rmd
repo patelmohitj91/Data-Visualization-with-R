@@ -1,0 +1,128 @@
+---
+title: "LA_Crime_Stats"
+author: "Mohit Patel"
+date: "1/20/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r CrimeStats}
+library(RgoogleMaps)
+library(ggplot2)
+library(stringr)
+library(tm)
+library(RColorBrewer)
+library(wordcloud)
+library(sp)
+getwd()
+# Read the data
+crime_stats <- read.csv("LACrimes2013.csv")
+
+as.String(crime_stats$CrmCd.Desc)
+# Wordmap for top 15 crimes in LA in 2013
+topcrimes <- Corpus(VectorSource(as.String(crime_stats$CrmCd.Desc)))
+topcrimes <- tm_map(topcrimes,PlainTextDocument)
+topcrimes <- tm_map(topcrimes, stripWhitespace)
+topcrimes <- tm_map(topcrimes, tolower)
+topcrimes <- tm_map(topcrimes, removeWords, stopwords("english"))
+topcrimes <- tm_map(topcrimes,removeNumbers)
+topcrimes <- tm_map(topcrimes,removePunctuation)
+topcrimes <- tm_map(topcrimes,PlainTextDocument)
+wordcloud(topcrimes,max.words=30,rot.per=0,use.r.layout=FALSE,colors=brewer.pal(8,"Accent"))
+
+
+# Wordmap for top areas in crime
+crime_areas <- Corpus(VectorSource(as.String(crime_stats$AREA.NAME)))
+levels(crime_stats$AREA.NAME)  # 21 Areas
+crime_areas <- tm_map(crime_areas,PlainTextDocument)
+crime_areas <- tm_map(crime_areas, stripWhitespace)
+crime_areas <- tm_map(crime_areas, tolower)
+crime_areas <- tm_map(crime_areas,PlainTextDocument)
+wordcloud(crime_areas,max.words=10, random.order=FALSE, rot.per=0, use.r.layout=FALSE, colors=brewer.pal(5, "Set1"))
+
+# What does West imply?
+west_area_filter <- (crime_stats$AREA.NAME=="West LA") | (crime_stats$AREA.NAME=="West Valley")
+west_area_crime_stats <- crime_stats[west_area_filter,,]
+levels(west_area_crime_stats$AREA.NAME)
+ggplot(data=west_area_crime_stats,aes(AREA.NAME))+geom_bar()+xlab("Area with prefix 'West'")+ylab("Frequency of crime")
+
+# Converting time as category to aggregate crimes
+head(crime_stats$TIME.OCC)
+
+crime_stats$TIMECat <- NA
+
+# Convert time of occurance into a Categorical Variable
+crime_stats$TIMECat <- cut(crime_stats$TIME.OCC,breaks=c(0000,300,600,900,1200,1500,1800,2100,2400),labels=c("12AM-3AM","3AM-6AM","6AM-9AM","9AM-12PM","12PM-3PM","3PM-6PM","6PM-9PM","9PM-12AM"))
+
+
+
+
+# Top crimes in the high risk areas
+levels(crime_stats$CrmCd.Desc)
+
+Area_Filter <- (crime_stats$AREA.NAME=="Northeast")|(crime_stats$AREA.NAME=="Mission")|(crime_stats$AREA.NAME=="Southwest")|(crime_stats$AREA.NAME=="Hollywood")|(crime_stats$AREA.NAME=="West LA")|(crime_stats$AREA.NAME=="West Valley")|(crime_stats$AREA.NAME=="Pacific")|(crime_stats$AREA.NAME=="Southeast")|(crime_stats$AREA.NAME=="Van Nuys")|(crime_stats$AREA.NAME=="77th Street")
+
+Area_df <- crime_stats[Area_Filter,,]
+
+Top_Crime_Filter <- (Area_df$CrmCd.Desc=="ASSAULT WITH DEADLY WEAPON ON POLICE OFFICER") | (Area_df$CrmCd.Desc=="ASSAULT WITH DEADLY WEAPON, AGGRAVATED ASSAULT")|(Area_df$CrmCd.Desc=="BURGLARY")|(Area_df$CrmCd.Desc=="BURGLARY FROM VEHICLE")|(Area_df$CrmCd.Desc=="BURGLARY, ATTEMPTED")|(Area_df$CrmCd.Desc=="SPOUSAL(COHAB) ABUSE - SIMPLE ASSAULT")|(Area_df$CrmCd.Desc=="THEFT, PERSON")|(Area_df$CrmCd.Desc=="VEHICLE - STOLEN")|(Area_df$CrmCd.Desc=="VANDALISM - MISDEAMEANOR")|(Area_df$CrmCd.Desc=="THEFT PLAIN - PETTY (UNDER $400)")|(Area_df$CrmCd.Desc=="VEHICLE - STOLEN")|(Area_df$CrmCd.Desc=="BATTERY - SIMPLE ASSAULT")|(Area_df$CrmCd.Desc=="BATTERY - SIMPLE ASSAULT")|(Area_df$CrmCd.Desc=="SPOUSAL(COHAB) ABUSE - SIMPLE ASSAULT")|(Area_df$CrmCd.Desc=="THEFT OF IDENTITY")|(Area_df$CrmCd.Desc=="THEFT-GRAND (OVER $400 OR $100 IF FOWL)")|(Area_df$CrmCd.Desc=="THEFT PLAIN - PETTY (UNDER $400)")
+
+Top_Crime_df <- Area_df[Top_Crime_Filter,,]
+
+Top_Crime_Overall_Filter <- (crime_stats$CrmCd.Desc=="ASSAULT WITH DEADLY WEAPON ON POLICE OFFICER") | (crime_stats$CrmCd.Desc=="ASSAULT WITH DEADLY WEAPON, AGGRAVATED ASSAULT")|(crime_stats$CrmCd.Desc=="BURGLARY")|(crime_stats$CrmCd.Desc=="BURGLARY FROM VEHICLE")|(crime_stats$CrmCd.Desc=="BURGLARY, ATTEMPTED")|(crime_stats$CrmCd.Desc=="SPOUSAL(COHAB) ABUSE - SIMPLE ASSAULT")|(crime_stats$CrmCd.Desc=="THEFT, PERSON")|(crime_stats$CrmCd.Desc=="VEHICLE - STOLEN")|(crime_stats$CrmCd.Desc=="VANDALISM - MISDEAMEANOR")|(crime_stats$CrmCd.Desc=="THEFT PLAIN - PETTY (UNDER $400)")|(crime_stats$CrmCd.Desc=="VEHICLE - STOLEN")|(crime_stats$CrmCd.Desc=="BATTERY - SIMPLE ASSAULT")|(crime_stats$CrmCd.Desc=="BATTERY - SIMPLE ASSAULT")|(crime_stats$CrmCd.Desc=="SPOUSAL(COHAB) ABUSE - SIMPLE ASSAULT")|(crime_stats$CrmCd.Desc=="THEFT OF IDENTITY")|(crime_stats$CrmCd.Desc=="THEFT-GRAND (OVER $400 OR $100 IF FOWL)")|(crime_stats$CrmCd.Desc=="THEFT PLAIN - PETTY (UNDER $400)")
+Top_Crime_overall_df <- crime_stats[Top_Crime_Overall_Filter,,]
+
+ggplot(data=Top_Crime_df,aes(AREA.NAME,fill=CrmCd.Desc))+geom_bar(color="Black")+xlab("Area")+ylab("Crime Count")
+
+
+
+
+#ggplot(data=Top_Crime_df,aes(AREA.NAME,fill=CrmCd.Desc))+geom_bar(color="Black")+xlab("Area")+ylab("Crime Count")
+
+# Frequency of occurance vs Time of Occurance
+
+# Frequency vs Time based occurance of most common crime in high risk areas identified in the word cloud
+ggplot(data=Top_Crime_df,aes(x=TIMECat,fill=CrmCd.Desc))+geom_bar(colour="Black")+xlab("TIME CATEGORY")+ylab("CRIME-FREQUENCY")+ggtitle("Frequency of common crimes in high risk areas")
+
+
+# Frequency vs Time based occurance of most common crimes in all areas according to TIME
+ggplot(data=Top_Crime_overall_df,aes(TIMECat,fill=CrmCd.Desc))+geom_bar(colour="Black")+xlab("TIME CATEGORY")+ylab("CRIME-FREQUENCY")+ggtitle("Frequency of common crimes overall")
+
+
+# Plot occurances of crime on the Map
+
+# Get Map
+la_get_map <- GetMap(center=c(lat=34.052,lon=-118.24),size=c(640,640),zoom=9,maptype = "terrain",destfile="map1.png")
+
+# Separate location data
+location_data <- crime_stats$Location.1
+typeof(location_data)
+head(location_data)
+Latitude <- str_match(as.character(location_data), "(\\w+.\\w+),\\s(-\\w+.\\w+)")
+
+
+head(Latitude)
+LLmatrix <- cbind(Latitude[,2],Latitude[,3])
+head(LLmatrix)
+
+numeric_lat <- as.numeric(LLmatrix[,1])
+head(numeric_lat)
+numeric_lon <- as.numeric(LLmatrix[,2])
+head(numeric_lon)
+numericll <- cbind(numeric_lat,numeric_lon)
+head(numericll)
+
+#Add location information back to crime_stats dataset
+crime_stats$Latitude <- numericll[,1,drop=F]
+crime_stats$Longitude <- numericll[,2,drop=F]
+head(crime_stats)
+
+
+pmb_lat <- c(crime_stats$Latitude)
+pmb_lon <- c(crime_stats$Longitude)
+
+PlotOnStaticMap(la_get_map,lat=c(pmb_lat),lon=c(pmb_lon),destfile="map2.png",zoom=10,cex=1,pch='.')
+
+```
